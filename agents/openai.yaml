@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI 数智化进阶版封面"
+  short_description: "用双讲师蓝紫模板、金色书法标题和透明合照制作 9:16 竖版封面"
+  default_prompt: "用 $shuzhihua202611 制作 AI 数智化进阶版的封面，标题用我给的文字，下方用我上传的配图。"
+policy:
+  allow_implicit_invocation: true
