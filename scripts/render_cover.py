@@ -86,15 +86,18 @@ def place_cutout(canvas, photo, title_bottom):
     scale = WIDTH / photo.width
     if round(photo.height * scale) > bottom - top:
         scale = (bottom - top) / photo.height
+
+    # Give landscape groups room to grow while keeping the entire original cutout.
+    landscape_group = photo.width > photo.height
+    target_width = round(WIDTH * (.96 if landscape_group else .78))
+    if round(photo.width * scale) < target_width:
+        earliest_top, bottom = (1018, 1745) if landscape_group else (1107, 1679)
+        top = max(earliest_top, title_bottom + y_px(18))
+        scale = min(target_width / photo.width, (bottom - top) / photo.height)
+
     photo = photo.resize(tuple(max(1, round(dimension * scale)) for dimension in photo.size), RESAMPLE)
     x = (WIDTH - photo.width) // 2
     y = top + (bottom - top - photo.height) // 2
-    tail = min(48, photo.height // 8)
-    if tail > 1 and y + photo.height > bottom - 24:
-        fade = np.ones(photo.height)
-        fade[-tail:] = np.linspace(1, 0, tail) ** .7
-        alpha = np.asarray(photo.getchannel("A"), dtype=float) * fade[:, None]
-        photo.putalpha(Image.fromarray(alpha.astype(np.uint8)))
     canvas.paste(photo, (x, y), photo.getchannel("A"))
     return y, y + photo.height
 
@@ -186,7 +189,7 @@ def gold_headline_mask(line, brush_font, scale):
     return headline.crop(headline.getbbox())
 
 
-def place_gold_title(canvas, lines, font_path, brush_font):
+def place_gold_title(canvas, lines, font_path, brush_font, top_anchor=None):
     max_width, max_height = round(WIDTH * .86), 384
     scale = 1.0
     while scale >= .45:
@@ -204,7 +207,7 @@ def place_gold_title(canvas, lines, font_path, brush_font):
     else:
         raise ValueError("标题过长，无法在保留主副标题层级的情况下排下。请按语义重新分行。")
 
-    title_top = 894 - height // 2
+    title_top = 894 - height // 2 if top_anchor is None else top_anchor
     y = title_top
     for index, mask in enumerate(masks):
         colors = ((255, 242, 182), (246, 178, 63)) if index == 0 else (
@@ -315,7 +318,8 @@ def render(request, font_path, brush_font=BRUSH_FONT):
     if style == "gold":
         if not brush_font.is_file() and not lines[0].isascii():
             raise ValueError("找不到字魂武林江湖体，请用 --brush-font 指定同款字体文件。")
-        title_bounds = place_gold_title(canvas, lines, font_path, brush_font)
+        top_anchor = 714 if fit == "cutout" and len(lines) == 2 else None
+        title_bounds = place_gold_title(canvas, lines, font_path, brush_font, top_anchor)
     else:
         title_bounds = place_title(canvas, lines, font_path)
     if fit == "cutout":
